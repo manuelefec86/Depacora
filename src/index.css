@@ -2,5 +2,4 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Small default styles */
 html, body, #root { height: 100%; }

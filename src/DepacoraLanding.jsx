@@ -1,25 +1,25 @@
+
 import React, { useState, useEffect } from "react";
 
 /**
- * Proyecto listo para Vercel.
- * Las imágenes se cargan desde /public/assets (sin imports estáticos).
- * Asegúrate de tener en /public/assets:
- *   - IMG_6701.jpeg (logo)
- *   - Screenshot_2025-09-19_at_*.png (fotos de productos reales)
+ * DEPACORA con Carrito + WhatsApp centralizado + PayU desde carrito.
+ * Imágenes desde /public/assets (no imports estáticos).
  */
 const ASSET = (name) => `/assets/${name}`;
 const LOGO = ASSET("IMG_6701.jpeg");
 
 const FALLBACK_IMG =
   "data:image/svg+xml;utf8," +
-  encodeURIComponent(`\
-    <svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'>\
-      <rect width='100%' height='100%' fill='#f3f4f6'/>\
-      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'\
-            font-size='24' fill='#9ca3af'>Imagen no encontrada</text>\
-    </svg>`);
+  encodeURIComponent(`    <svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'>      <rect width='100%' height='100%' fill='#f3f4f6'/>      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'            font-size='24' fill='#9ca3af'>Imagen no encontrada</text>    </svg>`);
 
-// ==== Productos (solo fotos reales de flores) ====
+// ===== WhatsApp helpers (número centralizado) =====
+const WHATSAPP_NUMBER = "573107837057"; // +57 310 783 7057 sin signos
+function waLink(text = "") {
+  const t = encodeURIComponent(text);
+  return `https://wa.me/${WHATSAPP_NUMBER}${t ? `?text=${t}` : ""}`;
+}
+
+// ==== Productos (solo fotos reales) ====
 const productosData = [
   {
     name: "Gato/Perro en porcelana con flores preservadas",
@@ -115,10 +115,39 @@ export default function DepacoraLanding() {
   const [openProduct, setOpenProduct] = useState(null);
   const [checkout, setCheckout] = useState(null);
 
+  // === carrito ===
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cart, setCart] = useState([]); // [{id, name, price, qty, img}]
+
+  function addToCart(product, qty = 1) {
+    const id = product.name;
+    setCart(prev => {
+      const i = prev.findIndex(it => it.id === id);
+      if (i >= 0) {
+        const copy = [...prev];
+        copy[i] = { ...copy[i], qty: copy[i].qty + qty };
+        return copy;
+      }
+      return [...prev, {
+        id,
+        name: product.name,
+        price: Number(product.price) || 0,
+        qty: qty,
+        img: product.imgs?.[0]
+      }];
+    });
+    setCartOpen(true);
+  }
+  function updateQty(id, qty) { setCart(prev => prev.map(it => it.id === id ? { ...it, qty: Math.max(1, qty|0) } : it)); }
+  function removeItem(id) { setCart(prev => prev.filter(it => it.id !== id)); }
+  const cartTotal = cart.reduce((s, it) => s + it.price * it.qty, 0);
+
   useEffect(() => {
     runSmokeTests(productosData);
-    // Test rápido de MD5: debe imprimir true
     console.log("MD5 test:", md5("test") === "098f6bcd4621d373cade4e832627b4f6");
+    const open = () => setCartOpen(true);
+    document.addEventListener('open-cart', open);
+    return () => document.removeEventListener('open-cart', open);
   }, []);
 
   return (
@@ -135,19 +164,30 @@ export default function DepacoraLanding() {
           </div>
           <nav className="hidden md:flex items-center gap-6 text-sm">
             <a href="#productos" className="hover:text-amber-700">Productos</a>
-            <a href="#beneficios" className="hover:text-amber-700">Beneficios</a>
-            <a href="#pagos" className="hover:text-amber-700">Pagos</a>
-            <a href="#faq" className="hover:text-amber-700">FAQ</a>
+            <a href="#politicas" className="hover:text-amber-700">Políticas</a>
+            <a href={waLink()} target="_blank" rel="noreferrer" className="hover:text-amber-700">WhatsApp</a>
           </nav>
           <div className="flex items-center gap-3">
             <a
-              href="https://wa.me/c/573107837057"
+              href={waLink()}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-2xl px-4 py-2 border border-amber-700 text-amber-700 hover:bg-amber-700 hover:text-white transition"
             >
               Catálogo WhatsApp
             </a>
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative rounded-xl px-3 py-2 border border-amber-700 text-amber-700 hover:bg-amber-50"
+              aria-label="Abrir carrito"
+            >
+              🛒 Carrito
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 text-xs bg-amber-700 text-white rounded-full px-2 py-0.5">
+                  {cart.reduce((s,it)=>s+it.qty,0)}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -155,7 +195,6 @@ export default function DepacoraLanding() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-10 items-center py-16">
-          {/* Columna izquierda */}
           <div>
             <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-amber-800">
               Detalles para el corazón 💖
@@ -171,7 +210,7 @@ export default function DepacoraLanding() {
                 Ver productos
               </a>
               <a
-                href="https://wa.me/message/NQK7XG6ERYK6I1"
+                href={waLink("Hola, quiero asesoría de DEPACORA")}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-2xl px-5 py-3 border border-amber-700 text-amber-700 hover:bg-amber-50"
@@ -186,7 +225,6 @@ export default function DepacoraLanding() {
             </div>
           </div>
 
-          {/* Columna derecha */}
           <div className="relative aspect-[4/3] rounded-3xl bg-pink-50 shadow-inner flex items-center justify-center">
             <img
               src={LOGO}
@@ -215,8 +253,28 @@ export default function DepacoraLanding() {
           product={openProduct}
           onClose={()=>setOpenProduct(null)}
           onCheckout={(p, buyer)=>setCheckout(buildPayuParams(p, buyer))}
+          onAddToCart={(p, qty)=>addToCart(p, qty)}
         />
       )}
+
+      {/* Carrito (Drawer) */}
+      <CartDrawer
+        open={cartOpen}
+        onClose={()=>setCartOpen(false)}
+        items={cart}
+        onUpdateQty={updateQty}
+        onRemove={removeItem}
+        total={cartTotal}
+        onPay={()=>{
+          if(cart.length===0) return;
+          const desc = cart.length === 1
+            ? `${cart[0].name} x${cart[0].qty}`
+            : `${cart[0].name} x${cart[0].qty} y ${cart.length-1} más`;
+          const pseudoProduct = { name: `Carrito DEPACORA — ${desc}`, price: cartTotal };
+          const buyer = { email: "test@buyer.com", name: "Cliente", qty: 1 };
+          setCheckout(buildPayuParams(pseudoProduct, buyer));
+        }}
+      />
 
       {/* POLÍTICAS Y ENVÍOS */}
       <section id="politicas" className="py-12 border-t bg-white/60">
@@ -243,7 +301,7 @@ export default function DepacoraLanding() {
               <div className="text-xs">© {new Date().getFullYear()} DEPACORA. Todos los derechos reservados.</div>
             </div>
             <div className="flex gap-4">
-              <a href="https://wa.me/c/573107837057" target="_blank" rel="noreferrer" className="underline">WhatsApp</a>
+              <a href={waLink()} target="_blank" rel="noreferrer" className="underline">WhatsApp</a>
               <a href="#politicas" className="underline">Políticas</a>
             </div>
           </div>
@@ -292,15 +350,27 @@ function ProductCard({ p, onOpen }) {
           <span className="text-lg font-bold text-amber-700">{formatCOP(p.price)}</span>
         </div>
         <div className="mt-3 flex gap-2">
-          <a href="#pagos" className="flex-1 rounded-xl px-4 py-2 bg-amber-700 text-white text-sm text-center hover:opacity-90">Comprar ahora</a>
-          <a href="https://wa.me/message/NQK7XG6ERYK6I1" target="_blank" rel="noreferrer" className="rounded-xl px-4 py-2 border border-amber-700 text-sm text-amber-700 hover:bg-amber-50">Consultar</a>
+          <button
+            onClick={() => onOpen(p)}
+            className="flex-1 rounded-xl px-4 py-2 bg-amber-700 text-white text-sm text-center hover:opacity-90"
+          >
+            Ver detalles
+          </button>
+          <a
+            href={waLink(`Hola, me interesa: ${p.name}`)}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl px-4 py-2 border border-amber-700 text-sm text-amber-700 hover:bg-amber-50"
+          >
+            WhatsApp
+          </a>
         </div>
       </div>
     </article>
   );
 }
 
-function ProductModal({ product, onClose, onCheckout }) {
+function ProductModal({ product, onClose, onCheckout, onAddToCart }) {
   const [i, setI] = useState(0);
   const [qty, setQty] = useState(1);
   const [name, setName] = useState("");
@@ -308,6 +378,7 @@ function ProductModal({ product, onClose, onCheckout }) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
+
   useEffect(()=>{ setI(0); setQty(1); setAddress(""); setCity(""); }, [product]);
   if (!product) return null;
   const total = product.imgs?.length || 0;
@@ -352,7 +423,7 @@ function ProductModal({ product, onClose, onCheckout }) {
               <span className="ml-2 text-sm text-neutral-500">Unidad</span>
             </div>
 
-            {/* Formulario de compra */}
+            {/* Formulario */}
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <label className="col-span-1">Cantidad
                 <input type="number" min={1} value={qty} onChange={e=>setQty(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
@@ -378,8 +449,26 @@ function ProductModal({ product, onClose, onCheckout }) {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
-              <button onClick={handleCheckout} className="rounded-2xl px-5 py-3 bg-amber-700 text-white hover:opacity-90">Pagar con PayU</button>
-              <a href={`https://wa.me/message/NQK7XG6ERYK6I1`} target="_blank" rel="noreferrer" className="rounded-2xl px-5 py-3 border border-amber-700 text-amber-700 hover:bg-amber-50">WhatsApp</a>
+              <button
+                onClick={() => onAddToCart(product, Math.max(1, parseInt(qty||1,10)))}
+                className="rounded-2xl px-5 py-3 bg-amber-700 text-white hover:opacity-90"
+              >
+                Agregar al carrito
+              </button>
+              <button
+                onClick={() => { onAddToCart(product, Math.max(1, parseInt(qty||1,10))); document.dispatchEvent(new CustomEvent('open-cart')); }}
+                className="rounded-2xl px-5 py-3 border border-amber-700 text-amber-700 hover:bg-amber-50"
+              >
+                Ir al carrito
+              </button>
+              <a
+                href={waLink(`Consulta: ${product.name} (${formatCOP(product.price)})`)}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-2xl px-5 py-3 border border-amber-700 text-amber-700 hover:bg-amber-50"
+              >
+                WhatsApp
+              </a>
               <button onClick={onClose} className="ml-auto text-sm underline">Cerrar</button>
             </div>
           </div>
@@ -389,8 +478,69 @@ function ProductModal({ product, onClose, onCheckout }) {
   );
 }
 
+function CartDrawer({ open, onClose, items, onUpdateQty, onRemove, total, onPay }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <aside className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-amber-800">Tu carrito</h3>
+          <button onClick={onClose} className="rounded-full bg-neutral-100 hover:bg-neutral-200 w-8 h-8 grid place-items-center">✕</button>
+        </div>
+        <div className="p-4 flex-1 overflow-auto">
+          {items.length === 0 ? (
+            <div className="text-sm text-neutral-500">Aún no has agregado productos.</div>
+          ) : (
+            <ul className="space-y-3">
+              {items.map(it => (
+                <li key={it.id} className="flex gap-3 border rounded-xl p-3">
+                  <img src={it.img} alt={it.name} className="w-16 h-16 object-cover rounded-lg bg-neutral-100" />
+                  <div className="flex-1">
+                    <div className="font-medium">{it.name}</div>
+                    <div className="text-sm text-neutral-600">{formatCOP(it.price)} c/u</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <label className="text-sm">Cant.</label>
+                      <input
+                        type="number" min={1} value={it.qty}
+                        onChange={e=>onUpdateQty(it.id, parseInt(e.target.value,10)||1)}
+                        className="w-20 rounded-lg border px-2 py-1 text-sm"
+                      />
+                      <div className="ml-auto font-semibold text-amber-700">{formatCOP(it.price * it.qty)}</div>
+                    </div>
+                  </div>
+                  <button onClick={()=>onRemove(it.id)} className="text-sm text-red-600 hover:underline">Quitar</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="p-4 border-t">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-neutral-600">Total</div>
+            <div className="text-xl font-bold text-amber-700">{formatCOP(total)}</div>
+          </div>
+          <button
+            onClick={onPay}
+            disabled={items.length===0}
+            className="w-full rounded-2xl px-5 py-3 bg-amber-700 text-white hover:opacity-90 disabled:opacity-50"
+          >
+            Pagar con PayU
+          </button>
+          <a
+            href={waLink("Hola, tengo dudas sobre mi carrito")}
+            target="_blank" rel="noreferrer"
+            className="mt-2 block text-center rounded-2xl px-5 py-3 border border-amber-700 text-amber-700 hover:bg-amber-50"
+          >
+            Consultar por WhatsApp
+          </a>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 // === PayU Sandbox integration (WebCheckout) ===
-// En producción, la firma debe generarse en el servidor.
 const PAYU_TEST = {
   apiKey: "4Vj8eK4rloUd272L48hsrarnUA",
   merchantId: "508029",
@@ -582,7 +732,7 @@ function rhex(n) {
   const s = "0123456789abcdef";
   let out = "";
   for (let j = 0; j < 4; j++) {
-    out += s.charAt((n >> (j * 8 + 4)) & 0x0F) + s.charAt((n >> (j * 8)) & 0xF);
+    out += s.charAt((n >> (j * 8 + 4)) & 0x0F) + s.charAt((n >> (j * 8)) & 0x0F);
   }
   return out;
 }
@@ -603,9 +753,7 @@ function runSmokeTests(items){
     assert(`Producto #${i+1} precio válido`, typeof p.price === 'number' && p.price > 0);
     assert(`Producto #${i+1} imgs válidas`, Array.isArray(p.imgs) && p.imgs.length > 0);
   });
-
-  // mini test MD5
-  assert("md5('test') === 098f6bcd...", md5("test") === "098f6bcd4621d373cade4e832627b4f6");
+  assert("md5('test') OK", md5("test") === "098f6bcd4621d373cade4e832627b4f6");
 
   const fails = results.filter(r=>!r.ok);
   if (fails.length){
